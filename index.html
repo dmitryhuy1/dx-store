@@ -224,16 +224,17 @@ updateCartUI();
 }
 
 function clearCart() {
-if (cart.length > 0 && confirm("Clear all items?")) {
-cart = [];
-updateCartUI();
-}
+    if (cart.length > 0 && confirm("Clear all items?")) {
+        cart = [];
+        updateCartUI();
+    }
 }
 
 // Инициализация
 updateCartUI();
-</script>// Вставь свои данные сюда
-const TELEGRAM_BOT_TOKEN = '8433870657:AAGPGqsm2hiaJIMEs-J2pgLnPwn71U3_x4U';
+
+// Данные Telegram
+const TELEGRAM_BOT_TOKEN = '8433870657:AAGPGqsm2hiaJlMEs-j2pgLnPwm71U3_x4U';
 const TELEGRAM_CHAT_ID = '6460754612';
 
 async function sendOrderToTelegram() {
@@ -242,20 +243,21 @@ async function sendOrderToTelegram() {
         return;
     }
 
-    let message = "📦 Новый заказ!\n\n";
-    let total = 0;
+    var message = "📦 Новый заказ!\n\n";
+    var total = 0;
     
-    cart.forEach((item, index) => {
-        message += ${index + 1}. ${item.name} — ${item.price} ₽\n;
+    for (var i = 0; i < cart.length; i++) {
+        var item = cart[i];
+        message += (i + 1) + ". " + item.name + " - " + item.price + " ₽\n";
         total += item.price;
-    });
+    }
     
-    message += \n💰 Итого: ${total} ₽;
+    message += "\n💰 Итого: " + total + " ₽";
 
-    const url = https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage;
+    var url = "https://api.telegram.org/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage";
     
     try {
-        const response = await fetch(url, {
+        var response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -270,12 +272,12 @@ async function sendOrderToTelegram() {
             updateCartUI();
             toggleCart();
         } else {
-            alert("Ошибка Telegram API. Проверь токен и ID.");
+            alert("Ошибка Telegram API. Бот запущен?");
         }
     } catch (error) {
         alert("Ошибка сети.");
     }
 }
-
+</script>
 </body>
 </html>
