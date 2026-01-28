@@ -75,7 +75,7 @@ footer a:hover { color: #fff; }
 <div id="cart-items-list" style="margin-top: 30px;"></div>
 <div id="cart-total" style="margin: 30px 0; font-weight: bold; border-top: 1px solid #333; pt: 20px;">TOTAL: 0 ₽</div>
 
-<button class="buy-btn" onclick="alert('Переход к оплате...')">CHECKOUT</button>
+<button class="buy-btn" onclick="sendOrderToTelegram()">CHECKOUT</button>
 <p onclick="clearCart()" style="text-align:center; cursor:pointer; opacity:0.5; font-size:12px; margin-top: 20px;">CLEAR ALL</p>
 <p onclick="toggleCart()" style="text-align:center; cursor:pointer; margin-top:20px; opacity:0.3; text-transform: uppercase; font-size: 10px;">CLOSE</p>
 </div>
@@ -232,7 +232,50 @@ updateCartUI();
 
 // Инициализация
 updateCartUI();
-</script>
+</script>// Вставь свои данные сюда
+const TELEGRAM_BOT_TOKEN = '8433870657:AAGPGqsm2hiaJIMEs-J2pgLnPwn71U3_x4U';
+const TELEGRAM_CHAT_ID = '6460754612';
+
+async function sendOrderToTelegram() {
+    if (cart.length === 0) {
+        alert("Корзина пуста!");
+        return;
+    }
+
+    let message = "📦 Новый заказ!\n\n";
+    let total = 0;
+    
+    cart.forEach((item, index) => {
+        message += ${index + 1}. ${item.name} — ${item.price} ₽\n;
+        total += item.price;
+    });
+    
+    message += \n💰 Итого: ${total} ₽;
+
+    const url = https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: TELEGRAM_CHAT_ID,
+                text: message
+            })
+        });
+
+        if (response.ok) {
+            alert("Заказ оформлен! Проверь Telegram.");
+            cart = []; 
+            updateCartUI();
+            toggleCart();
+        } else {
+            alert("Ошибка Telegram API. Проверь токен и ID.");
+        }
+    } catch (error) {
+        alert("Ошибка сети.");
+    }
+}
 
 </body>
 </html>
