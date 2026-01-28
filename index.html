@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>DX / LAB Store</title>
+<style>
+body { background-color: black; color: white; font-family: 'Helvetica', sans-serif; margin: 0; overflow-x: hidden; }
+
+.top-bar {
+position: fixed; top: 20px; left: 20px; right: 20px;
+display: flex; justify-content: space-between;
+font-weight: bold; letter-spacing: 5px; z-index: 2000;
+}
+
+/* ИСПРАВЛЕННАЯ ЗАСТАВКА */
+#intro {
+position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+background-color: black; display: flex; justify-content: center;
+align-items: center; z-index: 5000; transition: 0.8s;
+}
+#intro.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+h1 {
+font-size: 6vw; text-transform: uppercase; cursor: pointer;
+transition: 0.5s; letter-spacing: 5px;
+}
+h1:hover { letter-spacing: 15px; color: #ff3e00; }
+
+/* Магазин */
+#shop-content { padding: 120px 50px; display: none; grid-template-columns: repeat(3, 1fr); gap: 40px; }
+#shop-content.visible { display: grid; }
+
+.product-card { cursor: pointer; transition: 0.3s; }
+.product-card:hover { opacity: 0.8; }
+.photo-main { width: 100%; aspect-ratio: 3/4; object-fit: cover; background: #1a1a1a; margin-bottom: 15px; }
+
+/* Страница товара */
+#product-page { display: none; padding: 120px 50px; }
+#product-page.visible { display: block; }
+
+.product-container { display: flex; gap: 50px; }
+.product-img-large { width: 50%; aspect-ratio: 3/4; object-fit: cover; background: #1a1a1a; }
+.product-info { width: 40%; }
+
+.size-picker { display: flex; gap: 10px; margin: 20px 0; }
+.size-btn { border: 1px solid #333; background: none; color: white; padding: 10px 20px; cursor: pointer; }
+.size-btn.active { background: white; color: black; }
+
+.buy-btn { background: white; color: black; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; }
+
+/* Корзина */
+#cart-panel { position: fixed; top: 0; right: -400px; width: 350px; height: 100%; background: #111; z-index: 6000; transition: 0.4s; padding: 60px 20px; }
+#cart-panel.open { right: 0; }
+.cart-item { display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid #222; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+<span onclick="goBack()" style="cursor:pointer">DX / LAB</span>
+<span id="cart-btn" style="cursor:pointer">CART (<span id="cart-count">0</span>)</span>
+</div>
+
+<div id="intro">
+<h1 onclick="startSite()">Start Shopping</h1>
+</div>
+
+<div id="cart-panel">
+<h2>YOUR SELECTION</h2>
+<div id="cart-items-list"></div>
+<div id="cart-total" style="margin: 20px 0; font-weight: bold;">TOTAL: 0 ₽</div>
+<button class="buy-btn" onclick="alert('Checkout integration next step')">CHECKOUT</button>
+<p onclick="toggleCart()" style="text-align:center; cursor:pointer; margin-top:20px; opacity:0.5;">CLOSE</p>
+</div>
+
+<main id="shop-content"></main>
+
+<div id="product-page">
+<div onclick="goBack()" style="cursor:pointer; margin-bottom:20px; opacity:0.5;">← BACK</div>
+<div class="product-container">
+<img id="detail-img" class="product-img-large">
+<div class="product-info">
+<h2 id="detail-title" style="font-size:3rem; margin:0;"></h2>
+<p id="detail-price" style="font-size:1.5rem; color:#888; margin:10px 0;"></p>
+<div class="size-picker" id="detail-sizes"></div>
+<button class="buy-btn" onclick="addCurrentToCart()">ADD TO CART</button>
+<div style="margin-top:40px; border-top:1px solid #333; padding-top:20px;">
+<h3>DESCRIPTION</h3>
+<p id="detail-desc" style="line-height:1.6;"></p>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+// ИСПОЛЬЗУЕМ ЛОКАЛЬНЫЕ ПУТИ
+const products = [
+{ id: 1, name: 'DX Bomber', price: 15000, img: 'images/1.jpg', desc: 'Premium bomber jacket.', sizes: ['S', 'M', 'L'] },
+{ id: 2, name: 'LAB Cargo', price: 12000, img: 'images/2.jpg', desc: 'Tactical cargo pants.', sizes: ['M', 'L', 'XL'] },
+{ id: 3, name: 'Basic Tee', price: 5000, img: 'images/3.jpg', desc: 'Heavy cotton t-shirt.', sizes: ['S', 'M', 'L'] }
+];
+
+let cart = JSON.parse(localStorage.getItem('dx_cart')) || [];
+let currentProductId = null;
+let selectedSize = null;
+
+function startSite() {
+document.getElementById('intro').classList.add('hidden');
+document.getElementById('shop-content').classList.add('visible');
+renderShop();
+updateCartUI();
+}
+
+function renderShop() {
+const shop = document.getElementById('shop-content');
+shop.innerHTML = products.map(p => `
+<div class="product-card" onclick="openProduct(${p.id})">
+<img src="${p.img}" class="photo-main" onerror="this.src='https://via.placeholder.com/300x400?text=No+Photo'">
+<h3>${p.name}</h3>
+<p>${p.price} ₽</p>
+</div>
+`).join('');
+}
+
+function openProduct(id) {
+const p = products.find(item => item.id === id);
+currentProductId = id;
+selectedSize = null;
+document.getElementById('shop-content').classList.remove('visible');
+document.getElementById('product-page').classList.add('visible');
+document.getElementById('detail-img').src = p.img;
+document.getElementById('detail-title').innerText = p.name;
+document.getElementById('detail-price').innerText = p.price + ' ₽';
+document.getElementById('detail-desc').innerText = p.desc;
+document.getElementById('detail-sizes').innerHTML = p.sizes.map(s =>
+`<button class="size-btn" onclick="selectSize(this, '${s}')">${s}</button>`).join('');
+}
+
+function selectSize(btn, size) {
+document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+btn.classList.add('active');
+selectedSize = size;
+}
+
+function goBack() {
+document.getElementById('product-page').classList.remove('visible');
+document.getElementById('shop-content').classList.add('visible');
+}
+
+function addCurrentToCart() {
+if (!selectedSize) { alert('Select size'); return; }
+const p = products.find(item => item.id === currentProductId);
+cart.push({ name: `${p.name} (${selectedSize})`, price: p.price });
+localStorage.setItem('dx_cart', JSON.stringify(cart));
+updateCartUI();
+toggleCart();
+}
+
+function toggleCart() { document.getElementById('cart-panel').classList.toggle('open'); }
+document.getElementById('cart-btn').onclick = toggleCart;
+
+function updateCartUI() {
+const list = document.getElementById('cart-items-list');
+const count = document.getElementById('cart-count');
+const totalDiv = document.getElementById('cart-total');
+let total = 0;
+count.innerText = cart.length;
+list.innerHTML = cart.map(item => {
+total += item.price;
+return `<div class="cart-item"><span>${item.name}</span><span>${item.price} ₽</span></div>`;
+}).join('');
+totalDiv.innerText = `TOTAL: ${total} ₽`;
+}
+
+updateCartUI();
+</script>
+</body>
+</html>
