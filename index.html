@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head><script src="https://securepay.tinkoff.ru/html/payForm/js/tinkoff_v2.js"></script>
+<head>
+<script src="https://securepay.tinkoff.ru/html/payForm/js/tinkoff_v2.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DX / LAB Store</title>
@@ -167,7 +168,7 @@ document.getElementById('detail-price').innerText = p.price + ' ₽';
 document.getElementById('detail-desc').innerText = p.desc;
 document.getElementById('detail-sizes').innerHTML = p.sizes.map(s =>
 `<button class="size-btn" onclick="selectSize(this, '${s}')">${s}</button>`).join('');
-window.scrollTo(0,0);
+window.scrollTo(0, 0);
 }
 
 function selectSize(btn, size) {
@@ -223,140 +224,63 @@ updateCartUI();
 }
 
 function clearCart() {
-    if (cart.length > 0 && confirm("Clear all items?")) {
-        cart = [];
-        updateCartUI();
-    }
+if (cart.length > 0 && confirm("Clear all items?")) {
+cart = [];
+updateCartUI();
+}
 }
 
-// Инициализация
-updateCartUI();
-
-// Данные для оплаты и Telegram
 const TERMINAL_ID = '176967341';
 const TG_TOKEN = '8433870657:AAGPGqsm2hiaJlMEs-j2pgLnPwm71U3_x4U';
 const TG_CHAT_ID = '6460754612';
 
-// 1. Срабатывает при клике на CHECKOUT
 function sendOrderToTelegram() {
-    if (cart.length === 0) {
-        alert("Корзина пуста!");
-        return;
-    }
-
-    let total = 0;
-    for (var i = 0; i < cart.length; i++) {
-        total += cart[i].price;
-    }
-
-    // Вызываем окно Т-Банка
-    pay(total);
+if (cart.length === 0) {
+alert("Корзина пуста!");
+return;
+}
+let total = 0;
+for (let i = 0; i < cart.length; i++) {
+total += cart[i].price;
+}
+pay(total);
 }
 
-// 2. Логика Т-Банка
 function pay(amount) {
-    TinkoffProvider.create({
-        terminalId: TERMINAL_ID,
-        amount: amount,
-        orderId: 'DX_' + Date.now(),
-        description: 'Оплата заказа DX / LAB',
-        onSuccess: function (receipt) {
-            alert("Оплата прошла успешно!");
-            sendFinalNotification(amount);
-        },
-        onFail: function (error) {
-            alert("Ошибка оплаты: " + error);
-        }
-    }).open();
+TinkoffProvider.create({
+terminalId: TERMINAL_ID,
+amount: amount,
+orderId: 'DX_' + Date.now(),
+description: 'Оплата заказа DX / LAB',
+onSuccess: function (receipt) {
+alert("Оплата прошла успешно!");
+sendFinalNotification(amount);
+},
+onFail: function (error) {
+alert("Ошибка оплаты: " + error);
+}
+}).open();
 }
 
-// 3. Уведомление в Telegram (только после оплаты)
 async function sendFinalNotification(total) {
-    var message = "✅ ЗАКАЗ ОПЛАЧЕН!\n\n";
-    for (var i = 0; i < cart.length; i++) {
-        message += (i + 1) + ". " + cart[i].name + " - " + cart[i].price + " ₽\n";
-    }
-    message += "\n💰 Сумма: " + total + " ₽";
-
-    await fetch("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: TG_CHAT_ID, text: message })
-    });
-
-    cart = [];
-    updateCartUI();
-    toggleCart();
+let message = "✅ ЗАКАЗ ОПЛАЧЕН!\n\n";
+for (let i = 0; i < cart.length; i++) {
+message += (i + 1) + ". " + cart[i].name + " - " + cart[i].price + " ₽\n";
 }
-</script>
-</body>
-</html>
-function clearCart() {
-    if (cart.length > 0 && confirm("Clear all items?")) {
-        cart = [];
-        updateCartUI();
-    }
-}
+message += "\n💰 Сумма: " + total + " ₽";
 
-// Инициализация
+await fetch("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage", {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ chat_id: TG_CHAT_ID, text: message })
+});
+
+cart = [];
 updateCartUI();
-
-// Данные для оплаты и Telegram
-const TERMINAL_ID = '176967341';
-const TG_TOKEN = '8433870657:AAGPGqsm2hiaJlMEs-j2pgLnPwm71U3_x4U';
-const TG_CHAT_ID = '6460754612';
-
-// 1. Срабатывает при клике на CHECKOUT
-function sendOrderToTelegram() {
-    if (cart.length === 0) {
-        alert("Корзина пуста!");
-        return;
-    }
-
-    let total = 0;
-    for (var i = 0; i < cart.length; i++) {
-        total += cart[i].price;
-    }
-
-    // Вызываем окно Т-Банка
-    pay(total);
+toggleCart();
 }
 
-// 2. Логика Т-Банка
-function pay(amount) {
-    TinkoffProvider.create({
-        terminalId: TERMINAL_ID,
-        amount: amount,
-        orderId: 'DX_' + Date.now(),
-        description: 'Оплата заказа DX / LAB',
-        onSuccess: function (receipt) {
-            alert("Оплата прошла успешно!");
-            sendFinalNotification(amount);
-        },
-        onFail: function (error) {
-            alert("Ошибка оплаты: " + error);
-        }
-    }).open();
-}
-
-// 3. Уведомление в Telegram (только после оплаты)
-async function sendFinalNotification(total) {
-    var message = "✅ ЗАКАЗ ОПЛАЧЕН!\n\n";
-    for (var i = 0; i < cart.length; i++) {
-        message += (i + 1) + ". " + cart[i].name + " - " + cart[i].price + " ₽\n";
-    }
-    message += "\n💰 Сумма: " + total + " ₽";
-
-    await fetch("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: TG_CHAT_ID, text: message })
-    });
-
-    cart = [];
-    updateCartUI();
-    toggleCart();
-}
+updateCartUI();
 </script>
 </body>
 </html>
