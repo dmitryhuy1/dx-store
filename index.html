@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<script src="https://integrationjs.tbank.ru/integration.js" onload="onPaymentIntegrationLoad()" async></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DX / LAB Store</title>
+<script src="https://integrationjs.tbank.ru/integration.js" defer></script>
 <style>
 body { background-color: black; color: white; font-family: 'Helvetica', sans-serif; margin: 0; overflow-x: hidden; }
 .top-bar { position: fixed; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; font-weight: bold; letter-spacing: 5px; z-index: 2000; }
@@ -25,14 +25,13 @@ h1:hover { letter-spacing: 15px; color: #ff3e00; }
 .size-picker { display: flex; gap: 10px; margin: 20px 0; }
 .size-btn { border: 1px solid #333; background: none; color: white; padding: 10px 20px; cursor: pointer; }
 .size-btn.active { background: white; color: black; }
-.buy-btn { background: white; color: black; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+.buy-btn { background: white; color: black; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+.buy-btn:active { opacity: 0.5; }
 #cart-panel { position: fixed; top: 0; right: -400px; width: 350px; height: 100%; background: #111; z-index: 6000; transition: 0.4s; padding: 60px 20px; box-sizing: border-box; }
 #cart-panel.open { right: 0; }
 .cart-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #222; font-size: 14px; }
 .remove-btn { background: none; border: none; color: #ff4444; cursor: pointer; font-size: 18px; padding: 0 10px; }
 footer { background: #000; color: #666; padding: 60px 20px; border-top: 1px solid #222; margin-top: 50px; }
-footer a { color: #666; text-decoration: none; transition: 0.3s; }
-footer a:hover { color: #fff; }
 </style>
 </head>
 <body>
@@ -50,7 +49,7 @@ footer a:hover { color: #fff; }
 <h2 style="letter-spacing: 2px;">YOUR SELECTION</h2>
 <div id="cart-items-list" style="margin-top: 30px;"></div>
 <div id="cart-total" style="margin: 30px 0; font-weight: bold; border-top: 1px solid #333; padding-top: 20px;">TOTAL: 0 ₽</div>
-<button class="buy-btn" onclick="sendOrderToTelegram()">CHECKOUT</button>
+<button class="buy-btn" id="checkout-btn" onclick="handleCheckout()">CHECKOUT</button>
 <p onclick="clearCart()" style="text-align:center; cursor:pointer; opacity:0.5; font-size:12px; margin-top: 20px;">CLEAR ALL</p>
 <p onclick="toggleCart()" style="text-align:center; cursor:pointer; margin-top:20px; opacity:0.3; text-transform: uppercase; font-size: 10px;">CLOSE</p>
 </div>
@@ -75,11 +74,7 @@ footer a:hover { color: #fff; }
 </div>
 
 <footer>
-<div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 40px;">
-<div style="flex: 1; min-width: 250px;">
-<p style="font-size: 11px; line-height: 1.8;">ИП Пыхов Дмитрий Артемович<br>ИНН: 590583339820<br>© 2026 DX / LAB STORE.</p>
-</div>
-</div>
+<p style="text-align: center; font-size: 11px;">ИП Пыхов Дмитрий Артемович | © 2026 DX / LAB STORE</p>
 </footer>
 
 <script>
@@ -93,33 +88,21 @@ let cart = JSON.parse(localStorage.getItem('dx_cart')) || [];
 let currentProductId = null;
 let selectedSize = null;
 
-// Конфигурация Т-Банка и Telegram
 const TERMINAL_KEY = '176967341';
 const TG_TOKEN = '8433870657:AAGPGqsm2hiaJlMEs-j2pgLnPwm71U3_x4U';
 const TG_CHAT_ID = '6460754612';
 
-// 1. Инициализация интеграции при загрузке скрипта
-function onPaymentIntegrationLoad() {
+// Инициализация при загрузке
+window.onload = () => {
+if (typeof PaymentIntegration !== 'undefined') {
 PaymentIntegration.init({
 terminalKey: TERMINAL_KEY,
 product: 'eacq',
-features: {
-payment: {
-config: {
-status: {
-changedCallback: async (status) => {
-if (status === 'SUCCESS') {
-sendFinalNotification();
+features: { payment: { config: { status: { changedCallback: (s) => { if(s==='SUCCESS') sendFinalNotification(); } } } } }
+});
 }
-}
-}
-}
-}
-}
-}).catch(err => console.error("Init Error:", err));
-}
+};
 
-// 2. Логика магазина
 function startSite() {
 document.getElementById('intro').classList.add('hidden');
 document.getElementById('shop-content').classList.add('visible');
@@ -131,7 +114,7 @@ const shop = document.getElementById('shop-content');
 shop.innerHTML = products.map(p => `
 <div class="product-card" onclick="openProduct(${p.id})">
 <img src="${p.img}" class="photo-main" onerror="this.src='https://via.placeholder.com/300x400?text=No+Photo'">
-<h3 style="font-size: 14px;">${p.name}</h3>
+<h3>${p.name}</h3>
 <p style="color: #888;">${p.price} ₽</p>
 </div>
 `).join('');
@@ -204,22 +187,30 @@ updateCartUI();
 }
 }
 
-// 3. Вызов оплаты (Метод без необходимости бэкенда для простых тестов)
-function sendOrderToTelegram() {
-if (cart.length === 0) { alert("Корзина пуста!"); return; }
+// НОВАЯ ЛОГИКА КЛИКА
+function handleCheckout() {
+console.log("Кнопка нажата");
+if (cart.length === 0) {
+alert("Корзина пуста!");
+return;
+}
+
+if (typeof PaymentIntegration === 'undefined') {
+alert("Скрипт банка еще загружается, подождите секунду...");
+return;
+}
 
 let total = 0;
 cart.forEach(item => total += item.price);
 
-// Используем встроенный метод открытия оверлея
 PaymentIntegration.open({
 terminalKey: TERMINAL_KEY,
 amount: total,
 orderId: 'DX_' + Date.now(),
-description: 'Order from DX Store'
+description: 'Order DX / LAB'
 }).catch(err => {
 console.error(err);
-alert("Ошибка вызова формы. Проверьте настройки терминала в ЛК Т-Банка.");
+alert("Ошибка: проверьте настройки терминала.");
 });
 }
 
@@ -228,17 +219,15 @@ let message = "✅ ОПЛАЧЕН НОВЫЙ ЗАКАЗ!\n\n";
 cart.forEach((item, i) => {
 message += (i + 1) + ". " + item.name + " (" + item.size + ") - " + item.price + " ₽\n";
 });
-
 await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({ chat_id: TG_CHAT_ID, text: message })
 });
-
-alert("Спасибо за оплату!");
 cart = [];
 updateCartUI();
 toggleCart();
+alert("Оплата принята!");
 }
 
 updateCartUI();
